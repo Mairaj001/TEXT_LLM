@@ -45,19 +45,19 @@ COPY main.py .
 COPY paraphrase_service.py .
 
 # Expose port
-EXPOSE 8000
+EXPOSE 5656
 
 # Set environment variables
 ENV MODEL_PATH=/app/models/llama-2-13b.Q4_K_M.gguf
 ENV N_CTX=4096
 ENV N_THREADS=0
 ENV N_BATCH=512
-ENV PORT=8000
+ENV PORT=5656
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5656/health')" || exit 1
 
 # Run the application
-CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5656"]
 
