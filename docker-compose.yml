@@ -5,16 +5,16 @@ services:
     build: .
     container_name: paraphrase-api
     ports:
-      - "3000:3000"
+      - "5656:5656"
     environment:
       - MODEL_PATH=/app/models/llama-2-13b.Q4_K_M.gguf
       - N_CTX=4096
       - N_THREADS=0
       - N_BATCH=512
-      - PORT=3000
+      - PORT=5656
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3000/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5656/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
