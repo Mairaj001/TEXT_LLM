@@ -93,6 +93,23 @@ class ParaphraseResponse(BaseModel):
     statistics: dict
 
 
+class ChatRequest(BaseModel):
+    """Request model for basic chat completions"""
+    system_prompt: str = Field(..., description="Instructions that steer the assistant's behavior", min_length=5)
+    message: str = Field(..., description="User message to send to the model", min_length=1)
+    max_tokens: Optional[int] = Field(512, ge=32, le=1024)
+    temperature: Optional[float] = Field(0.7, ge=0.0, le=1.5)
+    top_p: Optional[float] = Field(0.9, ge=0.1, le=1.0)
+
+
+class ChatResponse(BaseModel):
+    """Response model for chat completions"""
+    system_prompt: str
+    user_message: str
+    response: str
+    statistics: dict
+
+
 @app.get("/")
 async def root():
     """Root endpoint"""
@@ -137,6 +154,25 @@ async def paraphrase_article(request: ParaphraseRequest):
         return ParaphraseResponse(**result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error paraphrasing article: {str(e)}")
+
+
+@app.post("/chat", response_model=ChatResponse)
+async def chat_with_model(request: ChatRequest):
+    """Basic chat endpoint that allows passing a system prompt."""
+    if paraphrase_service is None:
+        raise HTTPException(status_code=503, detail="Model not loaded. Please check server logs.")
+
+    try:
+        result = paraphrase_service.chat(
+            system_prompt=request.system_prompt,
+            user_message=request.message,
+            max_tokens=request.max_tokens or 512,
+            temperature=request.temperature or 0.7,
+            top_p=request.top_p or 0.9,
+        )
+        return ChatResponse(**result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating chat response: {str(e)}")
 
 
 if __name__ == "__main__":

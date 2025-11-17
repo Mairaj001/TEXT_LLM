@@ -86,3 +86,49 @@ Paraphrased Version (must be approximately {original_word_count} words):"""
         
         return result
 
+    def chat(
+        self,
+        system_prompt: str,
+        user_message: str,
+        max_tokens: int = 512,
+        temperature: float = 0.7,
+        top_p: float = 0.9,
+    ) -> Dict:
+        """
+        Run a lightweight chat completion with an optional system prompt.
+        """
+        prompt = (
+            f"System: {system_prompt}\n"
+            f"User: {user_message}\n"
+            "Assistant:"
+        )
+
+        start_time = time.time()
+        output = self.llm(
+            prompt,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            top_p=top_p,
+            stop=["User:", "System:", "</s>"],
+        )
+        inference_time = time.time() - start_time
+
+        response_text = output["choices"][0]["text"].strip()
+
+        return {
+            "system_prompt": system_prompt,
+            "user_message": user_message,
+            "response": response_text,
+            "statistics": {
+                "inference_time_seconds": round(inference_time, 2),
+                "tokens_per_second": round(
+                    len(response_text.split()) / inference_time, 2
+                )
+                if inference_time > 0
+                else 0,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "top_p": top_p,
+            },
+        }
+
