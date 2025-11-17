@@ -1,4 +1,7 @@
-# Use Python 3.11 slim image
+# Dockerfile that INCLUDES the model file in the image
+# Use this for deployments where you want everything self-contained
+# WARNING: This will create a very large image (~8GB+)
+
 FROM python:3.11-slim
 
 # Set working directory
@@ -16,14 +19,26 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install CPU-only torch to avoid CUDA dependencies (~1.4GB savings)
+# Install torch CPU version first, then other packages which depend on it
+RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch==2.9.1
+# Install all requirements (pip will skip torch as it's already installed)
+RUN pip install --no-cache-dir -r requirements.txt || \
+    (pip install --no-cache-dir -r requirements.txt --upgrade-strategy only-if-needed && \
+     pip install --no-cache-dir uvicorn==0.38.0 fastapi==0.121.2)
+# Verify critical packages are installed
+RUN python -c "import uvicorn; import fastapi; print('✓ uvicorn and fastapi installed')"
 
 # Create models directory
 RUN mkdir -p /app/models
 
+# Ensure huggingface-hub is installed before downloading model
+RUN pip install --no-cache-dir huggingface-hub==0.36.0
+
 # Download the model from Hugging Face during build
-# Using huggingface-cli which comes with huggingface-hub package
-RUN huggingface-cli download TheBloke/Llama-2-13B-GGUF llama-2-13b.Q4_K_M.gguf --local-dir /app/models --local-dir-use-symlinks False
+# NOTE: This makes the image very large (~8GB)
+# Using huggingface_hub Python API instead of CLI for reliability
+RUN python -c "from huggingface_hub import hf_hub_download; hf_hub_download(repo_id='TheBloke/Llama-2-13B-GGUF', filename='llama-2-13b.Q4_K_M.gguf', local_dir='/app/models')"
 
 # Copy application code
 COPY main.py .
@@ -39,7 +54,7 @@ ENV N_THREADS=0
 ENV N_BATCH=512
 ENV PORT=8000
 
-# Health check (using curl if available, otherwise skip)
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 
