@@ -94,14 +94,15 @@ Paraphrased Version (must be approximately {original_word_count} words):"""
         temperature: float = 0.7,
         top_p: float = 0.9,
     ) -> Dict:
-        """
-        Run a lightweight chat completion with an optional system prompt.
-        """
-        prompt = (
-            f"System: {system_prompt}\n"
-            f"User: {user_message}\n"
-            "Assistant:"
-        )
+
+        # Correct Llama-2 chat template
+        prompt = f"""
+<s>[INST] <<SYS>>
+{system_prompt}
+<</SYS>>
+
+{user_message} [/INST]
+"""
 
         start_time = time.time()
         output = self.llm(
@@ -109,7 +110,7 @@ Paraphrased Version (must be approximately {original_word_count} words):"""
             max_tokens=max_tokens,
             temperature=temperature,
             top_p=top_p,
-            stop=["User:", "System:", "</s>"],
+            stop=["</s>"],
         )
         inference_time = time.time() - start_time
 
@@ -123,9 +124,7 @@ Paraphrased Version (must be approximately {original_word_count} words):"""
                 "inference_time_seconds": round(inference_time, 2),
                 "tokens_per_second": round(
                     len(response_text.split()) / inference_time, 2
-                )
-                if inference_time > 0
-                else 0,
+                ) if inference_time > 0 else 0,
                 "max_tokens": max_tokens,
                 "temperature": temperature,
                 "top_p": top_p,
